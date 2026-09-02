@@ -13,20 +13,63 @@ permissions:
 
 jobs:
   terraform:
-    name: Terraform Deployment
+    name: Terraform Security & Deployment
     runs-on: ubuntu-latest
 
     steps:
 
-      # 1. Checkout code
+      # ============================================
+      # 1. Checkout
+      # ============================================
       - name: Checkout
         uses: actions/checkout@v4
 
+
+      # ============================================
       # 2. Setup Terraform
+      # ============================================
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # 3. Login to Azure using OIDC
+
+      # ============================================
+      # 3. Terraform Format
+      # ============================================
+      - name: Terraform Format Check
+        run: terraform fmt
+
+
+      # ============================================
+      # 4. Terraform Init
+      # ============================================
+      - name: Terraform Init
+        run: terraform init
+
+
+      # ============================================
+      # 5. Terraform Validate
+      # ============================================
+      - name: Terraform Validate
+        run: terraform validate
+
+
+      # ============================================
+      # 6. Security Scan - Trivy IaC
+      # ============================================
+      - name: Terraform Security Scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          scanners: misconfig,secret
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          format: table
+
+
+      # ============================================
+      # 7. Azure OIDC Login
+      # ============================================
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -34,23 +77,18 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # 4. Verify Azure Login
-      - name: Verify Azure Login
-        run: az account show
 
-      # 5. Terraform Init
-      - name: Terraform Init
-        run: terraform init
+      # ============================================
+      # 8. Verify Azure Login
+      # ============================================
+    #   - name: Verify Azure Login
+    #     run: |
+    #       az account show
 
-      # 6. Terraform Format Check
-      - name: Terraform Format
-        run: terraform fmt
 
-      # 7. Terraform Validate
-      - name: Terraform Validate
-        run: terraform validate
-
-      # 8. Terraform Plan
+      # ============================================
+      # 9. Terraform Plan
+      # ============================================
       - name: Terraform Plan
         run: terraform plan
         env:
@@ -59,7 +97,10 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # 9. Terraform Apply
+
+      # ============================================
+      # 10. Terraform Apply
+      # ============================================
       - name: Terraform Apply
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve
