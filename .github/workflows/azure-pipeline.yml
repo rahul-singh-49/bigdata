@@ -81,9 +81,9 @@ jobs:
       # ============================================
       # 8. Verify Azure Login
       # ============================================
-    #   - name: Verify Azure Login
-    #     run: |
-    #       az account show
+      - name: Verify Azure Login
+        run: |
+          az account show
 
 
       # ============================================
